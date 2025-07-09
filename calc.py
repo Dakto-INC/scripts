@@ -3,15 +3,22 @@ import math
 import webbrowser
 import tkinter as tk
 from fractions import Fraction
+import os
+from PIL import Image, ImageTk
+
+# Globals
+expr = ""
+memory = None
+history = []
+image_label = None
+root = None
+display = None
+entry = None
 
 # Welcome message
 print("Welcome to Dakto INC Calculator")
 time.sleep(1)
 print("\n---------------------------------------------------------------\n")
-
-# Memory
-memory = None
-history = []
 
 # CLI
 class Calculator:
@@ -119,6 +126,9 @@ def run_cli_scientific():
 
 
 # GUI
+expr = ""
+memory = None
+history = []
 
 def press(key):
     global expr
@@ -126,21 +136,56 @@ def press(key):
     display.set(expr)
 
 def equal():
-    global expr
+    global expr, image_label, entry, root
     try:
-        allowed_names = {**vars(math), "Fraction": Fraction}
-        result = eval(expr, {"__builtins__": None}, allowed_names)
+        if expr.strip().replace(" ", "") in ["28/08", "28/8"]:
+            display.set("It's me!")
+            if entry is not None:
+                entry.grid_forget()
+            if image_label is not None:
+                image_label.destroy()
+            if os.path.exists("dak.png"):
+                img = Image.open("dak.png")
+                if entry is not None:
+                    entry_width = entry.winfo_width()
+                    entry_height = entry.winfo_height()
+                    if entry_width <= 1 or entry_height <= 1:
+                        entry_width, entry_height = 250, 40
+                else:
+                    entry_width, entry_height = 250, 40
+                img.thumbnail((entry_width, entry_height), Image.Resampling.LANCZOS)
+
+                img_tk = ImageTk.PhotoImage(img)
+                image_label = tk.Label(root, image=img_tk)
+                image_label.image = img_tk 
+                image_label.grid(row=0, column=0, columnspan=6, pady=10, sticky="nsew")
+            else:
+                display.set("dak.png not found.")
+            expr = ""
+            return
+        allowed = {**vars(math), "Fraction": Fraction}
+        result = eval(expr, {"__builtins__": None}, allowed)
         display.set(str(result))
         history.append(f"{expr} = {result}")
         expr = str(result)
+        if image_label is not None:
+            image_label.destroy()
+            image_label = None
+        if entry is not None and not entry.winfo_ismapped():
+            entry.grid(row=0, column=0, columnspan=6, ipadx=8, ipady=10, pady=10, padx=10, sticky="nsew")
     except Exception as e:
-        display.set("An error occurred")
+        display.set(f"Error: {e}")
         expr = ""
 
 def clear():
-    global expr
+    global expr, image_label, entry
     expr = ""
     display.set("")
+    if image_label:
+        image_label.destroy()
+        image_label = None
+    if entry:
+        entry.grid(row=0, column=0, columnspan=0, ipadx=8, ipady=10, pady=10, padx=10, sticky="nsew")
 
 def dec_to_frac():
     global expr
@@ -189,17 +234,46 @@ def show_history():
 def open_website(event=None):
     webbrowser.open_new("https://www.daktoinc.co.uk")
 
+resize_after_id = None
+
+def resize_background(event):
+    global resize_after_id
+    if resize_after_id:
+        root.after_cancel(resize_after_id)
+    resize_after_id = root.after(150, lambda: do_resize(event.width, event.height))
+        
+def do_resize(new_width, new_height):
+    global background_label, original_bg
+    resized = original_bg.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    new_bg = ImageTk.PhotoImage(resized)
+    background_label.config(image=new_bg)
+    background_label.image = new_bg
+
 def run_gui():
-    global display
+    global display, root
     root = tk.Tk()
     root.configure(bg="black")
     root.title("Dakto INC Calculator")
     root.geometry("430x570")
 
     display = tk.StringVar()
+    image_label = None
+   
+    if os.path.exists("background.png"):
+        global original_bg, background_label
+        original_bg = Image.open("background.png")
+        resized_bg = original_bg.resize((root.winfo_width(), root.winfo_height()), Image.Resampling.LANCZOS)
+        bg_image = ImageTk.PhotoImage(resized_bg)
+        background_label = tk.Label(root, image=bg_image)
+        background_label.image = bg_image
+        background_label.place(x=0, y=0, relwidth=1, relheight=1)
+        root.bind("<Configure>", resize_background)
+
+
+        
     entry = tk.Entry(root, textvariable=display, font=('Arial', 14))
     entry.grid(columnspan=4, ipadx=70, ipady=10, pady=10)
-
+    
     # Button rows
     button = [
         ('7',2,0), ('8',2,1), ('9',2,2), ('/',2,3),
@@ -243,20 +317,33 @@ def run_gui():
         root.grid_columnconfigure(i, weight=1)
 
     # DKI Hyperlink
-    link = tk.Label(root, text="Dakto INC", fg="blue", cursor="hand2", bg="black", font=("Arial", 9, "underline"))
-    link.grid(row=99, column=5, sticky="e", padx=10, pady=5)
+    link_frame = tk.Frame(root, bg="black")
+    link_frame.grid(row=99, column=4, columnspan=2, sticky="e", padx=10, pady=5)
+    link = tk.Label(link_frame, text="Dakto INC", fg="blue", cursor="hand2", bg="black", font=("Arial", 9, "underline"))
+    link.pack(side="left")
     link.bind("<Button-1>", open_website)
+    
+    if os.path.exists("dki-icon.png"):
+        icon_img = Image.open("dki-icon.png").resize((16, 16))
+        icon_photo = ImageTk.PhotoImage(icon_img)
+        icon_label = tk.Label(link_frame, image=icon_photo, bg="black")
+        icon_label.image = icon_photo
+        icon_label.pack(side="left", padx=(5, 0))
     
     root.mainloop()
 
 # CLI or GUI?
 question = input("Would you like to use CLI, CLI-Scientific (CLIS) or GUI? ").strip().upper()
+print(f"You entered: {question}") # DEBUG
 
-if question == "CLI":
-    run_cli()
-elif question == "CLIS":
-    run_cli_scientific()
-elif question == "GUI":
-    run_gui()
-else:
-    print("Choice is invalid. Script will now exit.")
+try:
+    if question == "CLI":
+        run_cli()
+    elif question == "CLIS":
+        run_cli_scientific()
+    elif question == "GUI":
+        run_gui()
+    else:
+        print("Choice is invalid. Script will now exit.")
+except Exception as e:
+    print(f"Error running {question}: {e}")
