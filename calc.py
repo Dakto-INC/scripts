@@ -1,5 +1,6 @@
 import time
 import math
+import webbrowser
 import tkinter as tk
 from fractions import Fraction
 
@@ -77,7 +78,7 @@ def run_cli():
 
 def run_cli_scientific():
     calc = Calculator()
-    print("\Scientific Answers: ")
+    print("\nScientific Answers: ")
     print("1. Power (x^y)\n2. Square Root\n3. Sin\n4. Cos\n5. Tan\n6. Log\n7. Ln\n8. Factorial\n9. Fraction Addition")
     science = input("Choose an operation [1-9]: ").strip()
     
@@ -118,7 +119,6 @@ def run_cli_scientific():
 
 
 # GUI
-expr = ""
 
 def press(key):
     global expr
@@ -186,6 +186,9 @@ def show_history():
     else:
         display.set("No history")
 
+def open_website(event=None):
+    webbrowser.open_new("https://www.daktoinc.co.uk")
+
 def run_gui():
     global display
     root = tk.Tk()
@@ -232,7 +235,17 @@ def run_gui():
         else:
             action = lambda t=text: press(t)
 
-        Button = tk.Button(root, text=text, command=action, height=2, width=9).grid(row=row, column=col, padx=2, pady=2)
+        Button = tk.Button(root, text=text, command=action, height=2, width=9).grid(row=row, column=col, padx=2, pady=2, sticky="nsew")
+
+    for i in range(7):
+        root.grid_rowconfigure(i, weight=1)
+    for i in range(6):
+        root.grid_columnconfigure(i, weight=1)
+
+    # DKI Hyperlink
+    link = tk.Label(root, text="Dakto INC", fg="blue", cursor="hand2", bg="black", font=("Arial", 9, "underline"))
+    link.grid(row=99, column=5, sticky="e", padx=10, pady=5)
+    link.bind("<Button-1>", open_website)
     
     root.mainloop()
 
@@ -247,4 +260,3 @@ elif question == "GUI":
     run_gui()
 else:
     print("Choice is invalid. Script will now exit.")
-
